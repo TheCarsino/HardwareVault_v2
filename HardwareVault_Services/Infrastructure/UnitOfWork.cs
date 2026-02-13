@@ -1,4 +1,5 @@
-using HardwareVault_Services.Domain.Entities;
+using System;
+using System.Threading.Tasks;
 using HardwareVault_Services.Domain.Interfaces;
 using HardwareVault_Services.Infrastructure.Data;
 using HardwareVault_Services.Infrastructure.Repositories;
@@ -8,33 +9,39 @@ namespace HardwareVault_Services.Infrastructure
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ApplicationDbContext _context;
-        
-        public IDeviceRepository Devices { get; }
-        public IRepository<Manufacturer> Manufacturers { get; }
-        public IRepository<Cpu> Cpus { get; }
-        public IRepository<Gpu> Gpus { get; }
-        public IRepository<PowerSupply> PowerSupplies { get; }
-        public IRepository<ImportJob> ImportJobs { get; }
+
+        private IDeviceRepository? _devices;
+        private IManufacturerRepository? _manufacturers;
+        private ICpuRepository? _cpus;
+        private IGpuRepository? _gpus;
+        private IPowerSupplyRepository? _powerSupplies;
+        private IImportJobRepository? _importJobs;
 
         public UnitOfWork(ApplicationDbContext context)
         {
-            _context = context;
-            Devices = new DeviceRepository(_context);
-            Manufacturers = new Repository<Manufacturer>(_context);
-            Cpus = new Repository<Cpu>(_context);
-            Gpus = new Repository<Gpu>(_context);
-            PowerSupplies = new Repository<PowerSupply>(_context);
-            ImportJobs = new Repository<ImportJob>(_context);
+            _context = context ?? throw new ArgumentNullException(nameof(context));
         }
+        public IDeviceRepository Devices
+            => _devices ??= new DeviceRepository(_context);
+
+        public IManufacturerRepository Manufacturers
+            => _manufacturers ??= new ManufacturerRepository(_context);
+
+        public ICpuRepository Cpus
+            => _cpus ??= new CpuRepository(_context);
+
+        public IGpuRepository Gpus
+            => _gpus ??= new GpuRepository(_context);
+
+        public IPowerSupplyRepository PowerSupplies
+            => _powerSupplies ??= new PowerSupplyRepository(_context);
+
+        public IImportJobRepository ImportJobs
+            => _importJobs ??= new ImportJobRepository(_context);
 
         public async Task<int> SaveChangesAsync()
         {
             return await _context.SaveChangesAsync();
-        }
-
-        public async Task<bool> SaveChangesWithResultAsync()
-        {
-            return await _context.SaveChangesAsync() > 0;
         }
 
         public void Dispose()
