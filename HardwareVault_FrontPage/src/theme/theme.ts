@@ -14,8 +14,8 @@ export const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1E40AF',     // Deep blue — trust, education
-      light: '#3B82F6',
+      main: '#3c66c4',     // Deep blue — trust, education
+      light: '#00c168',
       dark: '#1E3A8A',
       contrastText: '#FFFFFF',
     },

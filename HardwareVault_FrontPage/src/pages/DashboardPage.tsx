@@ -134,8 +134,8 @@ export const DashboardPage: React.FC = () => {
                                         <TableCell>
                                             <StatusBadge status={job.status} />
                                         </TableCell>
-                                        <TableCell align="right">{job.successCount}</TableCell>
-                                        <TableCell align="right">{job.failureCount}</TableCell>
+                                        <TableCell align="right">{Math.abs(job.successCount)}</TableCell>
+                                        <TableCell align="right">{Math.abs(job.failureCount)}</TableCell>
                                     </TableRow>
                                 ))
                             )}
