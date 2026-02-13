@@ -1,9 +1,14 @@
+using System.Text.Json.Serialization;
+
 namespace HardwareVault_Services.Application.DTOs
 {
+    // Nested inside DeviceDto — one entry per USB port type
     public class UsbPortDto
     {
-        public Guid DeviceUsbPortId { get; set; }
-        public string UsbPortType { get; set; } = string.Empty;
-        public int PortCount { get; set; }
+        [JsonPropertyName("usbPortType")]
+        public string PortType { get; set; } = "";
+
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
     }
 }
