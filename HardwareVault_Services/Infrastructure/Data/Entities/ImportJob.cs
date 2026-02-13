@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace HardwareVault_Services.Infrastructure.Data.Entities;
 
+// partial -> merged with Infrastructure/Data/Entities/ImportJob.Partial.cs at compile time
 public partial class ImportJob
 {
     public Guid Id { get; set; }
@@ -15,9 +16,9 @@ public partial class ImportJob
 
     public int FailureCount { get; set; }
 
-    public string Status { get; set; } = null!;
+    public string Status { get; set; } = null!;  // "Pending"|"Processing"|"Completed"|"Failed"
 
-    public string? ErrorLog { get; set; }
+    public string? ErrorLog { get; set; }           // JSON array — nvarchar(max)
 
     public DateTime StartedAt { get; set; }
 
