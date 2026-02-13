@@ -1,4 +1,8 @@
+using System;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using HardwareVault_Services.Application.DTOs;
 using HardwareVault_Services.Application.Interfaces;
 
@@ -6,145 +10,170 @@ namespace HardwareVault_Services.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Produces("application/json")]
     public class DevicesController : ControllerBase
     {
         private readonly IDeviceService _deviceService;
+        private readonly IImportService _importService;
         private readonly ILogger<DevicesController> _logger;
 
-        public DevicesController(IDeviceService deviceService, ILogger<DevicesController> logger)
+        public DevicesController(
+            IDeviceService deviceService,
+            IImportService importService,
+            ILogger<DevicesController> logger)
         {
             _deviceService = deviceService;
-            _logger = logger;
+            _importService = importService;
+            _logger        = logger;
         }
 
-        /// <summary>
-        /// Get paginated list of devices with optional filters
-        /// </summary>
+        // -- GET /api/devices --
+        // Query params: page, pageSize, cpuManufacturer, gpuManufacturer,
+        //               storageType, minRamInGB, search
         [HttpGet]
+        [ProducesResponseType(typeof(PagedResultDto<DeviceDto>), 200)]
         public async Task<ActionResult<PagedResultDto<DeviceDto>>> GetDevices(
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? cpuManufacturer = null,
-            [FromQuery] string? gpuManufacturer = null,
-            [FromQuery] int? minRamInGB = null,
-            [FromQuery] string? storageType = null)
+            [FromQuery] int     page             = 1,
+            [FromQuery] int     pageSize         = 20,
+            [FromQuery] string? cpuManufacturer  = null,
+            [FromQuery] string? gpuManufacturer  = null,
+            [FromQuery] string? storageType      = null,
+            [FromQuery] int?    minRamInGB        = null,
+            [FromQuery] string? search           = null)
         {
-            try
-            {
-                var result = await _deviceService.GetDevicesAsync(
-                    page, pageSize, cpuManufacturer, gpuManufacturer, minRamInGB, storageType);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving devices");
-                return StatusCode(500, "An error occurred while retrieving devices");
-            }
+            if (page < 1)
+                return BadRequest(new { Error = "page must be at least 1" });
+            if (pageSize is < 1 or > 100)
+                return BadRequest(new { Error = "pageSize must be between 1 and 100" });
+
+            var result = await _deviceService.GetDevicesAsync(
+                page, pageSize,
+                cpuManufacturer, gpuManufacturer,
+                storageType, minRamInGB, search);
+
+            return Ok(result);
         }
 
-        /// <summary>
-        /// Get a specific device by ID
-        /// </summary>
-        [HttpGet("{id}")]
-        public async Task<ActionResult<DeviceDto>> GetDevice(Guid id)
+        // -- GET /api/devices/{id} --
+        [HttpGet("{id:guid}")]
+        [ProducesResponseType(typeof(DeviceDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<DeviceDto>> GetDeviceById(Guid id)
         {
-            try
-            {
-                var device = await _deviceService.GetDeviceByIdAsync(id);
-                if (device == null)
-                {
-                    return NotFound($"Device with ID {id} not found");
-                }
-                return Ok(device);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving device {DeviceId}", id);
-                return StatusCode(500, "An error occurred while retrieving the device");
-            }
+            var device = await _deviceService.GetDeviceByIdAsync(id);
+            if (device is null)
+                return NotFound(new { Error = $"Device {id} not found" });
+
+            return Ok(device);
         }
 
-        /// <summary>
-        /// Create a new device
-        /// </summary>
+        // -- GET /api/devices/statistics --
+        [HttpGet("statistics")]
+        [ProducesResponseType(typeof(DeviceStatisticsDto), 200)]
+        public async Task<ActionResult<DeviceStatisticsDto>> GetStatistics()
+        {
+            var stats = await _deviceService.GetStatisticsAsync();
+            return Ok(stats);
+        }
+
+        // -- POST /api/devices ----
         [HttpPost]
-        public async Task<ActionResult<DeviceDto>> CreateDevice([FromBody] CreateDeviceDto createDto)
+        [ProducesResponseType(typeof(DeviceDto), 201)]
+        [ProducesResponseType(400)]
+        public async Task<ActionResult<DeviceDto>> CreateDevice(
+            [FromBody] CreateDeviceDto dto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
-                var device = await _deviceService.CreateDeviceAsync(createDto);
-                return CreatedAtAction(nameof(GetDevice), new { id = device.DeviceId }, device);
+                var device = await _deviceService.CreateDeviceAsync(dto);
+                return CreatedAtAction(
+                    nameof(GetDeviceById),
+                    new { id = device.DeviceId },
+                    device);
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating device");
-                return StatusCode(500, "An error occurred while creating the device");
+                return BadRequest(new { Error = ex.Message });
             }
         }
 
-        /// <summary>
-        /// Update an existing device
-        /// </summary>
-        [HttpPut("{id}")]
-        public async Task<ActionResult<DeviceDto>> UpdateDevice(Guid id, [FromBody] UpdateDeviceDto updateDto)
+        // -- PUT /api/devices/{id} --
+        [HttpPut("{id:guid}")]
+        [ProducesResponseType(typeof(DeviceDto), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(400)]
+        public async Task<ActionResult<DeviceDto>> UpdateDevice(
+            Guid id,
+            [FromBody] UpdateDeviceDto dto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
-                var device = await _deviceService.UpdateDeviceAsync(id, updateDto);
-                if (device == null)
-                {
-                    return NotFound($"Device with ID {id} not found");
-                }
+                var device = await _deviceService.UpdateDeviceAsync(id, dto);
+                if (device is null)
+                    return NotFound(new { Error = $"Device {id} not found" });
+
                 return Ok(device);
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "Error updating device {DeviceId}", id);
-                return StatusCode(500, "An error occurred while updating the device");
+                return BadRequest(new { Error = ex.Message });
             }
         }
 
-        /// <summary>
-        /// Delete a device (soft delete)
-        /// </summary>
-        [HttpDelete("{id}")]
+        // -- DELETE /api/devices/{id} --
+        // Soft delete — sets IsDeleted = true, never removes the row
+        [HttpDelete("{id:guid}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> DeleteDevice(Guid id)
         {
-            try
-            {
-                var result = await _deviceService.DeleteDeviceAsync(id);
-                if (!result)
-                {
-                    return NotFound($"Device with ID {id} not found");
-                }
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting device {DeviceId}", id);
-                return StatusCode(500, "An error occurred while deleting the device");
-            }
+            var deleted = await _deviceService.DeleteDeviceAsync(id);
+            if (!deleted)
+                return NotFound(new { Error = $"Device {id} not found" });
+
+            return NoContent();
         }
 
-        /// <summary>
-        /// Get devices by CPU manufacturer
-        /// </summary>
-        [HttpGet("by-cpu-manufacturer/{manufacturerName}")]
-        public async Task<ActionResult<IEnumerable<DeviceDto>>> GetDevicesByCpuManufacturer(string manufacturerName)
+        // -- POST /api/devices/import --
+        // 200  — all rows succeeded
+        // 207  — partial success (some rows failed — see Errors array)
+        // 400  — file missing, wrong type, or too large
+        // 500  — unhandled server error
+        [HttpPost("import")]
+        [ProducesResponseType(typeof(ImportResultDto), 200)]
+        [ProducesResponseType(typeof(ImportResultDto), StatusCodes.Status207MultiStatus)]
+        [ProducesResponseType(400)]
+        public async Task<ActionResult<ImportResultDto>> ImportDevices(IFormFile file)
         {
+            if (file is null || file.Length == 0)
+                return BadRequest(new { Error = "No file uploaded" });
+
+            if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { Error = "Only .xlsx files are accepted" });
+
+            const long maxBytes = 10 * 1024 * 1024; // 10 MB
+            if (file.Length > maxBytes)
+                return BadRequest(new { Error = "File cannot exceed 10 MB" });
+
             try
             {
-                var devices = await _deviceService.GetDevicesByCpuManufacturerAsync(manufacturerName);
-                return Ok(devices);
+                using var stream = file.OpenReadStream();
+                var result = await _importService.ImportDevicesAsync(stream, file.FileName);
+
+                return result.FailureCount > 0
+                    ? StatusCode(StatusCodes.Status207MultiStatus, result)
+                    : Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving devices for manufacturer {Manufacturer}", manufacturerName);
-                return StatusCode(500, "An error occurred while retrieving devices");
+                _logger.LogError(ex, "Import failed: {File}", file.FileName);
+                return StatusCode(500, new { Error = "An error occurred during import" });
             }
         }
     }

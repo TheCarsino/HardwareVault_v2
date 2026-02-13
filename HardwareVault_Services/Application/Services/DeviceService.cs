@@ -1,197 +1,213 @@
+// ============================================================
+// APPLICATION LAYER — DEVICE SERVICE
+// Orchestrates device use cases:
+//   - Talks to repositories through IUnitOfWork
+//   - Calls business methods on domain entities
+//   - Maps entities -> DTOs before returning to controller
+//   - Never touches EF Core, SQL, or HTTP directly
+// ============================================================
+
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using HardwareVault_Services.Application.DTOs;
 using HardwareVault_Services.Application.Interfaces;
-using HardwareVault_Services.Domain.Entities;
+using HardwareVault_Services.Infrastructure.Data.Entities;
 using HardwareVault_Services.Domain.Interfaces;
+using HardwareVault_Services.Domain.Common;
 
 namespace HardwareVault_Services.Application.Services
 {
     public class DeviceService : IDeviceService
     {
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IUnitOfWork _uow;
         private readonly ILogger<DeviceService> _logger;
 
-        public DeviceService(IUnitOfWork unitOfWork, ILogger<DeviceService> logger)
+        public DeviceService(IUnitOfWork uow, ILogger<DeviceService> logger)
         {
-            _unitOfWork = unitOfWork;
-            _logger = logger;
+            _uow = uow ?? throw new ArgumentNullException(nameof(uow));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task<PagedResultDto<DeviceDto>> GetDevicesAsync(
-            int page = 1, 
-            int pageSize = 10,
+            int page,
+            int pageSize,
             string? cpuManufacturer = null,
             string? gpuManufacturer = null,
+            string? storageType = null,
             int? minRamInGB = null,
-            string? storageType = null)
+            string? search = null)
         {
-            var (devices, totalCount) = await _unitOfWork.Devices.GetPagedDevicesAsync(
-                page, 
-                pageSize,
-                cpuManufacturer,
-                gpuManufacturer,
-                minRamInGB,
-                storageType);
-
-            var deviceDtos = devices.Select(MapToDto).ToList();
+            var result = await _uow.Devices.GetPagedAsync(
+                page, pageSize,
+                cpuManufacturer, gpuManufacturer,
+                storageType, minRamInGB, search);
 
             return new PagedResultDto<DeviceDto>
             {
-                Data = deviceDtos,
-                TotalCount = totalCount,
+                Data = result.Data.Select(MapToDto).ToList(),
+                TotalCount = result.TotalCount,
                 Page = page,
                 PageSize = pageSize
             };
         }
 
-        public async Task<DeviceDto?> GetDeviceByIdAsync(Guid deviceId)
+        public async Task<DeviceDto?> GetDeviceByIdAsync(Guid id)
         {
-            var device = await _unitOfWork.Devices.GetDeviceWithDetailsAsync(deviceId);
-            return device == null ? null : MapToDto(device);
+            var device = await _uow.Devices.GetByIdWithDetailsAsync(id);
+            return device is null ? null : MapToDto(device);
         }
 
         public async Task<DeviceDto> CreateDeviceAsync(CreateDeviceDto dto)
         {
-            // Validate storage type
-            if (!new[] { "SSD", "HDD", "NVMe" }.Contains(dto.StorageType))
-            {
-                throw new ArgumentException($"Invalid storage type: {dto.StorageType}. Must be SSD, HDD, or NVMe");
-            }
+            // Device.Create() validates all business rules.
+            // Throws ArgumentException if any rule is violated.
+            var device = Device.Create(
+                dto.RamSizeInMB,
+                dto.StorageSizeInGB,
+                dto.StorageType.ToUpper(),
+                dto.CpuId,
+                dto.GpuId,
+                dto.PowerSupplyId,
+                dto.WeightInKg);
 
-            // Create device
-            var device = new Device
-            {
-                Id = Guid.NewGuid(),
-                RamSizeInMB = dto.RamSizeInMB,
-                StorageSizeInGB = dto.StorageSizeInGB,
-                StorageType = dto.StorageType,
-                CpuId = dto.CpuId,
-                GpuId = dto.GpuId,
-                PowerSupplyId = dto.PowerSupplyId,
-                WeightInKg = dto.WeightInKg,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                IsDeleted = false
-            };
+            foreach (var port in dto.UsbPorts)
+                device.AddUsbPort(port.PortType, port.Count);
 
-            // Add USB ports if provided
-            if (dto.UsbPorts.Any())
-            {
-                foreach (var usbPortDto in dto.UsbPorts)
-                {
-                    var usbPort = new DeviceUsbPort
-                    {
-                        Id = Guid.NewGuid(),
-                        DeviceId = device.Id,
-                        UsbPortType = usbPortDto.UsbPortType,
-                        PortCount = usbPortDto.PortCount
-                    };
-                    device.DeviceUsbPorts.Add(usbPort);
-                }
-            }
+            await _uow.Devices.AddAsync(device);
+            await _uow.SaveChangesAsync();
 
-            await _unitOfWork.Devices.AddAsync(device);
-            await _unitOfWork.SaveChangesAsync();
+            _logger.LogInformation("Device created: {DeviceId}", device.Id);
 
-            _logger.LogInformation("Created new device with ID: {DeviceId}", device.Id);
-
-            // Load related data for DTO
-            var createdDevice = await _unitOfWork.Devices.GetDeviceWithDetailsAsync(device.Id);
-            return MapToDto(createdDevice!);
+            // Re-fetch with navigations so the response DTO is complete
+            var created = await _uow.Devices.GetByIdWithDetailsAsync(device.Id);
+            return MapToDto(created!);
         }
 
-        public async Task<DeviceDto?> UpdateDeviceAsync(Guid deviceId, UpdateDeviceDto dto)
+        public async Task<DeviceDto?> UpdateDeviceAsync(Guid id, UpdateDeviceDto dto)
         {
-            var device = await _unitOfWork.Devices.GetByIdAsync(deviceId);
-            if (device == null)
-            {
-                return null;
-            }
+            // GetByIdWithDetailsAsync respects the global soft-delete filter
+            var device = await _uow.Devices.GetByIdWithDetailsAsync(id);
+            if (device is null) return null;
 
-            // Update properties if provided
+            // Only update fields that were provided (null = unchanged)
             if (dto.RamSizeInMB.HasValue)
-                device.RamSizeInMB = dto.RamSizeInMB.Value;
+                device.UpdateRam(dto.RamSizeInMB.Value);
 
-            if (dto.StorageSizeInGB.HasValue)
-                device.StorageSizeInGB = dto.StorageSizeInGB.Value;
-
-            if (!string.IsNullOrEmpty(dto.StorageType))
-            {
-                if (new[] { "SSD", "HDD", "NVMe" }.Contains(dto.StorageType))
-                    device.StorageType = dto.StorageType;
-            }
+            if (dto.StorageSizeInGB.HasValue || dto.StorageType is not null)
+                device.UpdateStorage(
+                    dto.StorageSizeInGB ?? device.StorageSizeInGb,
+                    dto.StorageType ?? device.StorageType);
 
             if (dto.WeightInKg.HasValue)
-                device.WeightInKg = dto.WeightInKg.Value;
+                device.UpdateWeight(dto.WeightInKg.Value);
 
             if (dto.CpuId.HasValue)
-                device.CpuId = dto.CpuId.Value;
+                device.UpdateCpu(dto.CpuId.Value);
 
             if (dto.GpuId.HasValue)
-                device.GpuId = dto.GpuId.Value;
+                device.UpdateGpu(dto.GpuId.Value);
 
             if (dto.PowerSupplyId.HasValue)
-                device.PowerSupplyId = dto.PowerSupplyId.Value;
+                device.UpdatePowerSupply(dto.PowerSupplyId.Value);
 
-            device.UpdatedAt = DateTime.UtcNow;
-
-            _unitOfWork.Devices.Update(device);
-            await _unitOfWork.SaveChangesAsync();
-
-            _logger.LogInformation("Updated device with ID: {DeviceId}", deviceId);
-
-            // Load related data for DTO
-            var updatedDevice = await _unitOfWork.Devices.GetDeviceWithDetailsAsync(deviceId);
-            return MapToDto(updatedDevice!);
-        }
-
-        public async Task<bool> DeleteDeviceAsync(Guid deviceId)
-        {
-            var device = await _unitOfWork.Devices.GetByIdAsync(deviceId);
-            if (device == null)
+            if (dto.UsbPorts is not null)
             {
-                return false;
+                device.ClearUsbPorts();
+                foreach (var port in dto.UsbPorts)
+                    device.AddUsbPort(port.PortType, port.Count);
             }
 
-            // Soft delete
-            device.IsDeleted = true;
-            device.UpdatedAt = DateTime.UtcNow;
+            // EF Core is already tracking this entity (loaded from same DbContext)
+            // No explicit Update() call needed - SaveChangesAsync picks up changes
+            await _uow.SaveChangesAsync();
 
-            _unitOfWork.Devices.Update(device);
-            await _unitOfWork.SaveChangesAsync();
+            _logger.LogInformation("Device updated: {DeviceId}", id);
 
-            _logger.LogInformation("Soft deleted device with ID: {DeviceId}", deviceId);
+            var updated = await _uow.Devices.GetByIdWithDetailsAsync(id);
+            return MapToDto(updated!);
+        }
+
+        public async Task<bool> DeleteDeviceAsync(Guid id)
+        {
+            var device = await _uow.Devices.GetByIdAsync(id);
+            if (device is null) return false;
+
+            device.SoftDelete();   // Sets IsDeleted = true, UpdatedAt = now
+            await _uow.SaveChangesAsync();
+
+            _logger.LogInformation("Device soft-deleted: {DeviceId}", id);
             return true;
         }
 
-        public async Task<IEnumerable<DeviceDto>> GetDevicesByCpuManufacturerAsync(string manufacturerName)
+        public async Task<DeviceStatisticsDto> GetStatisticsAsync()
         {
-            var devices = await _unitOfWork.Devices.GetDevicesByCpuManufacturerAsync(manufacturerName);
-            return devices.Select(MapToDto);
-        }
+            var stats = await _uow.Devices.GetStatisticsAsync();
 
-        private DeviceDto MapToDto(Device device)
-        {
-            return new DeviceDto
+            return new DeviceStatisticsDto
             {
-                DeviceId = device.Id,
-                RamSizeInMB = device.RamSizeInMB,
-                StorageSizeInGB = device.StorageSizeInGB,
-                StorageType = device.StorageType,
-                WeightInKg = device.WeightInKg,
-                CpuModel = device.Cpu.ModelName,
-                CpuManufacturer = device.Cpu.Manufacturer.Name,
-                GpuModel = device.Gpu.ModelName,
-                GpuManufacturer = device.Gpu.Manufacturer.Name,
-                PowerSupplyWattage = device.PowerSupply.WattageInWatts,
-                UsbPorts = device.DeviceUsbPorts.Select(up => new UsbPortDto
-                {
-                    DeviceUsbPortId = up.Id,
-                    UsbPortType = up.UsbPortType,
-                    PortCount = up.PortCount
-                }).ToList(),
-                CreatedAt = device.CreatedAt,
-                UpdatedAt = device.UpdatedAt
+                TotalDevices = stats.TotalDevices,
+                ActiveDevices = stats.ActiveDevices,
+                DeletedDevices = stats.TotalDevices - stats.ActiveDevices,
+                SsdCount = stats.SsdCount,
+                HddCount = stats.HddCount,
+                AverageRamInGB = stats.AverageRamInGB,
+                AverageStorageInGB = stats.AverageStorageInGB,
+                ByCpuManufacturer = stats.ByCpuManufacturer,
+                ByGpuManufacturer = stats.ByGpuManufacturer
             };
         }
+
+        // Private: only this service is allowed to map Device -> DeviceDto.
+        // Null-coalescing guards against null navigations on partial loads.
+        private static DeviceDto MapToDto(Device d) => new()
+        {
+            DeviceId = d.Id.ToString(),
+            RamSizeInMB = d.RamSizeInMb,
+            StorageSizeInGB = d.StorageSizeInGb,
+            StorageType = d.StorageType,
+            WeightInKg = d.WeightInKg,
+            CreatedAt = d.CreatedAt.ToString("o"),  // ISO 8601 format
+            UpdatedAt = d.UpdatedAt.ToString("o"),
+
+            Cpu = new CpuInfoDto
+            {
+                CpuId = d.CpuId,
+                ModelName = d.Cpu?.ModelName ?? "",
+                Manufacturer = new ManufacturerInfoDto
+                {
+                    ManufacturerId = d.Cpu?.Manufacturer?.Id ?? 0,
+                    Name = d.Cpu?.Manufacturer?.Name ?? "",
+                    Type = d.Cpu?.Manufacturer?.ProductType ?? ""
+                }
+            },
+
+            Gpu = new GpuInfoDto
+            {
+                GpuId = d.GpuId,
+                ModelName = d.Gpu?.ModelName ?? "",
+                Manufacturer = new ManufacturerInfoDto
+                {
+                    ManufacturerId = d.Gpu?.Manufacturer?.Id ?? 0,
+                    Name = d.Gpu?.Manufacturer?.Name ?? "",
+                    Type = d.Gpu?.Manufacturer?.ProductType ?? ""
+                }
+            },
+
+            PowerSupply = new PowerSupplyInfoDto
+            {
+                PowerSupplyId = d.PowerSupplyId,
+                WattageInWatts = d.PowerSupply?.WattageInWatts ?? 0
+            },
+
+            UsbPorts = d.DeviceUsbPorts
+                .Select(p => new UsbPortDto
+                {
+                    PortType = p.UsbPortType,
+                    Count = p.PortCount
+                }).ToList()
+        };
     }
 }
+

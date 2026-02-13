@@ -1,21 +1,34 @@
+using System;
+using System.Threading.Tasks;
 using HardwareVault_Services.Application.DTOs;
 
 namespace HardwareVault_Services.Application.Interfaces
 {
     public interface IDeviceService
     {
+        // GET /api/devices — main table with filtering + pagination
         Task<PagedResultDto<DeviceDto>> GetDevicesAsync(
-            int page = 1, 
-            int pageSize = 10,
+            int page,
+            int pageSize,
             string? cpuManufacturer = null,
             string? gpuManufacturer = null,
+            string? storageType = null,
             int? minRamInGB = null,
-            string? storageType = null);
-        
-        Task<DeviceDto?> GetDeviceByIdAsync(Guid deviceId);
+            string? search = null);
+
+        // GET /api/devices/{id} — detail panel / edit form
+        Task<DeviceDto?> GetDeviceByIdAsync(Guid id);
+
+        // POST /api/devices — manual device creation
         Task<DeviceDto> CreateDeviceAsync(CreateDeviceDto dto);
-        Task<DeviceDto?> UpdateDeviceAsync(Guid deviceId, UpdateDeviceDto dto);
-        Task<bool> DeleteDeviceAsync(Guid deviceId);
-        Task<IEnumerable<DeviceDto>> GetDevicesByCpuManufacturerAsync(string manufacturerName);
+
+        // PUT /api/devices/{id} — edit device
+        Task<DeviceDto?> UpdateDeviceAsync(Guid id, UpdateDeviceDto dto);
+
+        // DELETE /api/devices/{id} — soft delete
+        Task<bool> DeleteDeviceAsync(Guid id);
+
+        // GET /api/devices/statistics — dashboard aggregates
+        Task<DeviceStatisticsDto> GetStatisticsAsync();
     }
 }
