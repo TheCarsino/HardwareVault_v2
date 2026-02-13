@@ -1,0 +1,132 @@
+@HardwareVault_Services_HostAddress = http://localhost:5131
+
+### =====================================================
+### DEVICES API - Hardware Vault Services
+### =====================================================
+
+### Get all devices (paginated)
+GET {{HardwareVault_Services_HostAddress}}/api/devices?page=1&pageSize=10
+Accept: application/json
+
+###
+
+### Get all devices with filters
+GET {{HardwareVault_Services_HostAddress}}/api/devices?page=1&pageSize=10&cpuManufacturer=Intel&minRamInGB=8&storageType=SSD
+Accept: application/json
+
+###
+
+### Get device by ID
+# Replace {deviceId} with actual GUID from previous response
+GET {{HardwareVault_Services_HostAddress}}/api/devices/{deviceId}
+Accept: application/json
+
+###
+
+### Create a new device
+POST {{HardwareVault_Services_HostAddress}}/api/devices
+Content-Type: application/json
+
+{
+  "ramSizeInMB": 16384,
+  "storageSizeInGB": 512,
+  "storageType": "SSD",
+  "weightInKg": 1.5,
+  "cpuId": 1,
+  "gpuId": 1,
+  "powerSupplyId": 1,
+  "usbPorts": [
+    {
+      "usbPortType": "USB-C",
+      "portCount": 2
+    },
+    {
+      "usbPortType": "USB 3.0",
+      "portCount": 4
+    }
+  ]
+}
+
+###
+
+### Create device with minimal data
+POST {{HardwareVault_Services_HostAddress}}/api/devices
+Content-Type: application/json
+
+{
+  "ramSizeInMB": 8192,
+  "storageSizeInGB": 256,
+  "storageType": "NVMe",
+  "weightInKg": 2.3,
+  "cpuId": 2,
+  "gpuId": 3,
+  "powerSupplyId": 2,
+  "usbPorts": []
+}
+
+###
+
+### Update an existing device
+# Replace {deviceId} with actual GUID
+PUT {{HardwareVault_Services_HostAddress}}/api/devices/{deviceId}
+Content-Type: application/json
+
+{
+  "ramSizeInMB": 32768,
+  "storageType": "NVMe",
+  "storageSize": 1024
+}
+
+###
+
+### Delete a device (soft delete)
+# Replace {deviceId} with actual GUID
+DELETE {{HardwareVault_Services_HostAddress}}/api/devices/{deviceId}
+
+###
+
+### Get devices by CPU manufacturer (Intel)
+GET {{HardwareVault_Services_HostAddress}}/api/devices/by-cpu-manufacturer/Intel
+Accept: application/json
+
+###
+
+### Get devices by CPU manufacturer (AMD)
+GET {{HardwareVault_Services_HostAddress}}/api/devices/by-cpu-manufacturer/AMD
+Accept: application/json
+
+###
+
+### =====================================================
+### EXAMPLE QUERIES WITH DIFFERENT FILTERS
+### =====================================================
+
+### Find devices with AMD CPUs and NVIDIA GPUs
+GET {{HardwareVault_Services_HostAddress}}/api/devices?cpuManufacturer=AMD&gpuManufacturer=NVIDIA
+Accept: application/json
+
+###
+
+### Find devices with at least 16GB RAM
+GET {{HardwareVault_Services_HostAddress}}/api/devices?minRamInGB=16
+Accept: application/json
+
+###
+
+### Find HDD devices only
+GET {{HardwareVault_Services_HostAddress}}/api/devices?storageType=HDD
+Accept: application/json
+
+###
+
+### Complex filter: Intel CPUs, 8GB+ RAM, SSD storage
+GET {{HardwareVault_Services_HostAddress}}/api/devices?cpuManufacturer=Intel&minRamInGB=8&storageType=SSD
+Accept: application/json
+
+###
+
+### Pagination - Page 2 with 5 items per page
+GET {{HardwareVault_Services_HostAddress}}/api/devices?page=2&pageSize=5
+Accept: application/json
+
+###
