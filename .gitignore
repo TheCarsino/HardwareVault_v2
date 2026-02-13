@@ -109,6 +109,7 @@ secrets.json
 # Windows thumbnail cache
 Thumbs.db
 ehthumbs.db
+ehthumbs.db
 
 ################################################################################
 # This .gitignore file is also for frontend projects, such as those using React, Angular, or Vue.js.
