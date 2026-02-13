@@ -87,7 +87,7 @@ export const ImportHistoryPage: React.FC = () => {
                                         </TableCell>
                                         <TableCell align="right">{job.totalRows}</TableCell>
                                         <TableCell align="right">
-                                            {formatSuccessRate(job.successCount, job.totalRows)}
+                                            {formatSuccessRate(Math.abs(job.successCount), Math.abs(job.totalRows))}
                                         </TableCell>
                                         <TableCell>{formatDateTime(job.startedAt)}</TableCell>
                                         <TableCell align="center">
