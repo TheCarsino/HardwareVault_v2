@@ -29,7 +29,7 @@ export interface Device {
 export interface UsbPort {
   deviceUsbPortId: string;
   usbPortType: string;
-  portCount: number;
+  count: number;
 }
 
 export interface DeviceFilters {
@@ -55,7 +55,7 @@ export interface CreateDeviceDto {
 
 export interface CreateUsbPortDto {
   usbPortType: string;
-  portCount: number;
+  count: number;
 }
 
 export interface UpdateDeviceDto {

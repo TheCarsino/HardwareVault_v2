@@ -11,10 +11,10 @@ interface ManufacturerChartProps {
 const COLORS = ['#1E40AF', '#3B82F6', '#60A5FA', '#93C5FD', '#DBEAFE'];
 
 export const ManufacturerChart: React.FC<ManufacturerChartProps> = ({ data, title }) => {
-    const chartData = Object.entries(data).map(([name, value]) => ({
+    const chartData = data ? Object.entries(data).map(([name, value]) => ({
         name,
         value,
-    }));
+    })) : [];
 
     if (chartData.length === 0) {
         return (

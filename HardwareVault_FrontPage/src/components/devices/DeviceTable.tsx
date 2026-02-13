@@ -63,7 +63,7 @@ export const DeviceTable: React.FC<DeviceTableProps> = ({
             field: 'ram',
             headerName: 'RAM',
             width: 120,
-            valueGetter: (params) => params.row.ramSizeInMB,
+            valueGetter: (value, row) => row.ramSizeInMB,
             renderCell: (params) => ramToGB(params.row.ramSizeInMB),
         },
         {
@@ -77,7 +77,7 @@ export const DeviceTable: React.FC<DeviceTableProps> = ({
             headerName: 'USB Ports',
             width: 120,
             renderCell: (params) => {
-                const totalPorts = params.row.usbPorts.reduce((sum, port) => sum + port.portCount, 0);
+                const totalPorts = params.row.usbPorts.reduce((sum, port) => sum + port.count, 0);
                 return formatUsbPorts(totalPorts);
             },
         },

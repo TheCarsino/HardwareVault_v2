@@ -81,7 +81,7 @@ export const DeviceDetailPanel: React.FC<DeviceDetailPanelProps> = ({
                 powerSupplyWattageInWatts: device.powerSupply.wattageInWatts,
                 usbPorts: device.usbPorts.map(port => ({
                     usbPortType: port.usbPortType,
-                    portCount: port.portCount,
+                    count: port.count,
                 })),
             });
         }
@@ -305,7 +305,7 @@ export const DeviceDetailPanel: React.FC<DeviceDetailPanelProps> = ({
                                             )}
                                         />
                                         <Controller
-                                            name={`usbPorts.${index}.portCount`}
+                                            name={`usbPorts.${index}.count`}
                                             control={control}
                                             rules={{ required: 'Count is required', min: 1 }}
                                             render={({ field }) => (
@@ -324,7 +324,7 @@ export const DeviceDetailPanel: React.FC<DeviceDetailPanelProps> = ({
                                         </Button>
                                     </Box>
                                 ))}
-                                <Button onClick={() => append({ usbPortType: 'USB 3.0', portCount: 1 })} size="small">
+                                <Button onClick={() => append({ usbPortType: 'USB 3.0', count: 1 })} size="small">
                                     Add USB Port
                                 </Button>
                             </Grid>

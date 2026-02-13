@@ -18,10 +18,10 @@ interface StorageTypeChartProps {
 }
 
 export const StorageTypeChart: React.FC<StorageTypeChartProps> = ({ data, title }) => {
-    const chartData = Object.entries(data).map(([name, value]) => ({
+    const chartData = data ? Object.entries(data).map(([name, value]) => ({
         name,
         count: value,
-    }));
+    })) : [];
 
     if (chartData.length === 0) {
         return (

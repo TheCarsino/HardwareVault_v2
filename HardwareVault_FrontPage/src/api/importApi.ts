@@ -10,7 +10,7 @@ export const importApi = baseApi.injectEndpoints({
         method: 'POST',
         body: formData,
         // Don't set Content-Type header - browser will set it with boundary for FormData
-        prepareHeaders: (headers) => {
+        prepareHeaders: (headers: Headers) => {
           headers.delete('Content-Type');
           return headers;
         },
@@ -23,7 +23,7 @@ export const importApi = baseApi.injectEndpoints({
     }),
     
     getImportJobs: builder.query<PagedResult<ImportJob>, { page?: number; pageSize?: number }>({
-      query: ({ page = 1, pageSize = 20 }) => `/imports?page=${page}&pageSize=${pageSize}`,
+      query: ({ page = 1, pageSize = 20 }) => `/import/history?page=${page}&pageSize=${pageSize}`,
       providesTags: (result) =>
         result
           ? [
@@ -37,12 +37,12 @@ export const importApi = baseApi.injectEndpoints({
     }),
     
     getImportJobById: builder.query<ImportJob, string>({
-      query: (id) => `/imports/${id}`,
+      query: (id) => `/import/${id}`,
       providesTags: (result, error, id) => [{ type: 'ImportJob', id }],
     }),
     
     getRecentImportJobs: builder.query<ImportJob[], number>({
-      query: (limit = 5) => `/imports/recent?limit=${limit}`,
+      query: (limit = 5) => `/import/recent?limit=${limit}`,
       providesTags: [{ type: 'ImportJob', id: 'RECENT' }],
     }),
   }),

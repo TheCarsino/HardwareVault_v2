@@ -31,7 +31,7 @@ export const manufacturerApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'Manufacturer', id: 'LIST' }],
     }),
-    
+    //<To be implemented on .NET>
     updateManufacturer: builder.mutation<Manufacturer, { id: number; body: Partial<Manufacturer> }>({
       query: ({ id, body }) => ({
         url: `/manufacturers/${id}`,
@@ -43,7 +43,7 @@ export const manufacturerApi = baseApi.injectEndpoints({
         { type: 'Manufacturer', id: 'LIST' },
       ],
     }),
-    
+    //<To be implemented on .NET>
     deleteManufacturer: builder.mutation<void, number>({
       query: (id) => ({
         url: `/manufacturers/${id}`,

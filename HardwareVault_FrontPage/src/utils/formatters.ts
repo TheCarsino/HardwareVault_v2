@@ -33,8 +33,8 @@ export const formatWatts = (watts: number): string => {
 /**
  * Formats USB port count
  */
-export const formatUsbPorts = (portCount: number): string => {
-  return portCount === 1 ? '1 port' : `${portCount} ports`;
+export const formatUsbPorts = (count: number): string => {
+  return count === 1 ? '1 port' : `${count} ports`;
 };
 
 /**
