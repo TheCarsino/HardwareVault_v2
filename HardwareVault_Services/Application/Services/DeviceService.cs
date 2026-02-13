@@ -149,13 +149,10 @@ namespace HardwareVault_Services.Application.Services
             {
                 TotalDevices = stats.TotalDevices,
                 ActiveDevices = stats.ActiveDevices,
-                DeletedDevices = stats.TotalDevices - stats.ActiveDevices,
-                SsdCount = stats.SsdCount,
-                HddCount = stats.HddCount,
-                AverageRamInGB = stats.AverageRamInGB,
-                AverageStorageInGB = stats.AverageStorageInGB,
-                ByCpuManufacturer = stats.ByCpuManufacturer,
-                ByGpuManufacturer = stats.ByGpuManufacturer
+                RecentImportJobsCount = stats.RecentImportJobsCount,
+                LastImportDate = stats.LastImportDate?.ToString("o"), // ISO 8601 format
+                DevicesByCpuManufacturer = stats.ByCpuManufacturer,
+                DevicesByStorageType = stats.ByStorageType
             };
         }
 

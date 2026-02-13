@@ -85,20 +85,19 @@ namespace HardwareVault_Services.Infrastructure.Repositories
             return new PagedResult<Device> { Data = data, TotalCount = totalCount };
         }
 
-        // -- GetStatisticsAsync 
         // Powers the dashboard cards and charts.
         // Runs grouped aggregates — never loads individual device rows.
         public async Task<DeviceStatistics> GetStatisticsAsync()
         {
-            // IgnoreQueryFilters for total (includes deleted)
-            var totalDevices  = await _dbSet.IgnoreQueryFilters().CountAsync();
-            var activeDevices = await _dbSet.CountAsync(); // filter active
+            var totalDevices  = await _dbSet.CountAsync(); // Active devices only
+            var activeDevices = totalDevices; // Same as total (soft-deleted are filtered out)
 
-            var ssdCount = await _dbSet.CountAsync(d => d.StorageType == "SSD");
-            var hddCount = await _dbSet.CountAsync(d => d.StorageType == "HDD");
-
-            var avgRam = await _dbSet.AverageAsync(d => (double?)d.RamSizeInMb) ?? 0;
-            var avgStorage = await _dbSet.AverageAsync(d => (double?)d.StorageSizeInGb) ?? 0;
+            // Group by storage type
+            var byStorageType = await _dbSet
+                .GroupBy(d => d.StorageType)
+                .Select(g => new { StorageType = g.Key, Count = g.Count() })
+                .AsNoTracking()
+                .ToDictionaryAsync(x => x.StorageType, x => x.Count);
 
             // Group by CPU manufacturer name
             var byCpu = await _dbSet
@@ -108,24 +107,26 @@ namespace HardwareVault_Services.Infrastructure.Repositories
                 .AsNoTracking()
                 .ToDictionaryAsync(x => x.Manufacturer, x => x.Count);
 
-            // Group by GPU manufacturer name
-            var byGpu = await _dbSet
-                .Include(d => d.Gpu).ThenInclude(g => g.Manufacturer)
-                .GroupBy(d => d.Gpu.Manufacturer.Name)
-                .Select(g => new { Manufacturer = g.Key, Count = g.Count() })
-                .AsNoTracking()
-                .ToDictionaryAsync(x => x.Manufacturer, x => x.Count);
+            // Get import job statistics
+            var recentImportJobsCount = await _context.ImportJobs
+                .Where(j => j.CompletedAt.HasValue && 
+                            j.CompletedAt.Value >= DateTime.UtcNow.AddDays(-30))
+                .CountAsync();
+
+            var lastImportDate = await _context.ImportJobs
+                .Where(j => j.CompletedAt.HasValue)
+                .OrderByDescending(j => j.CompletedAt)
+                .Select(j => j.CompletedAt)
+                .FirstOrDefaultAsync();
 
             return new DeviceStatistics
             {
-                TotalDevices         = totalDevices,
-                ActiveDevices        = activeDevices,
-                SsdCount             = ssdCount,
-                HddCount             = hddCount,
-                AverageRamInGB       = Math.Round(avgRam / 1024, 1),
-                AverageStorageInGB   = Math.Round(avgStorage, 1),
-                ByCpuManufacturer    = byCpu,
-                ByGpuManufacturer    = byGpu
+                TotalDevices = totalDevices,
+                ActiveDevices = activeDevices,
+                RecentImportJobsCount = recentImportJobsCount,
+                LastImportDate = lastImportDate,
+                ByCpuManufacturer = byCpu,
+                ByStorageType = byStorageType
             };
         }
     }

@@ -105,7 +105,7 @@ namespace HardwareVault_Services.Application.Services
 
                 // STEP 6 — Merge parse errors + persist errors
                 var allErrors = parseResult.FailedRows.Concat(persistErrors).ToList();
-                int finalSuccess = parseResult.SuccessCount - persistErrors.Count;
+                int finalSuccess = Math.Abs(parseResult.SuccessCount - persistErrors.Count);
 
                 // STEP 7 — Serialize error log to JSON and complete the job
                 var errorJson = allErrors.Count > 0

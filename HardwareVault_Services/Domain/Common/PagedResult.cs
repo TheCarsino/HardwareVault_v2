@@ -3,6 +3,7 @@
 // ============================================================
 // Shared result wrapper used by paged repository methods.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -17,13 +18,11 @@ namespace HardwareVault_Services.Domain.Common
     // Returned by GetStatisticsAsync — powers dashboard cards and charts
     public class DeviceStatistics
     {
-        public int TotalDevices  { get; set; }
+        public int TotalDevices { get; set; }
         public int ActiveDevices { get; set; }
-        public int SsdCount      { get; set; }
-        public int HddCount      { get; set; }
+        public int RecentImportJobsCount { get; set; }
+        public DateTime? LastImportDate { get; set; }
         public Dictionary<string, int> ByCpuManufacturer { get; set; } = new();
-        public Dictionary<string, int> ByGpuManufacturer { get; set; } = new();
-        public double AverageRamInGB     { get; set; }
-        public double AverageStorageInGB { get; set; }
+        public Dictionary<string, int> ByStorageType { get; set; } = new();
     }
 }

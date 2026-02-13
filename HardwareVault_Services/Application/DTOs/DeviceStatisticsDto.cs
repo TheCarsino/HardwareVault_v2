@@ -12,25 +12,16 @@ namespace HardwareVault_Services.Application.DTOs
         [JsonPropertyName("activeDevices")]
         public int ActiveDevices { get; set; }
 
-        [JsonPropertyName("deletedDevices")]
-        public int DeletedDevices { get; set; }
+        [JsonPropertyName("recentImportJobsCount")]
+        public int RecentImportJobsCount { get; set; }
 
-        [JsonPropertyName("ssdCount")]
-        public int SsdCount { get; set; }
+        [JsonPropertyName("lastImportDate")]
+        public string? LastImportDate { get; set; }
 
-        [JsonPropertyName("hddCount")]
-        public int HddCount { get; set; }
+        [JsonPropertyName("devicesByCpuManufacturer")]
+        public Dictionary<string, int> DevicesByCpuManufacturer { get; set; } = new();
 
-        [JsonPropertyName("averageRamInGB")]
-        public double AverageRamInGB { get; set; }
-
-        [JsonPropertyName("averageStorageInGB")]
-        public double AverageStorageInGB { get; set; }
-
-        [JsonPropertyName("byCpuManufacturer")]
-        public Dictionary<string, int> ByCpuManufacturer { get; set; } = new();
-
-        [JsonPropertyName("byGpuManufacturer")]
-        public Dictionary<string, int> ByGpuManufacturer { get; set; } = new();
+        [JsonPropertyName("devicesByStorageType")]
+        public Dictionary<string, int> DevicesByStorageType { get; set; } = new();
     }
 }
