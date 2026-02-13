@@ -1,71 +1,54 @@
+﻿// ════════════════════════════════════════════════════════════
+// INFRASTRUCTURE LAYER — REPOSITORIES
+// Generic base — inherited by all 6 repositories
+// ════════════════════════════════════════════════════════════
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using HardwareVault_Services.Infrastructure.Data;
 using HardwareVault_Services.Domain.Interfaces;
+using HardwareVault_Services.Infrastructure.Data;
 
 namespace HardwareVault_Services.Infrastructure.Repositories
 {
-    public class Repository<T> : IRepository<T> where T : class
+    public abstract class Repository<TEntity, TKey> : IRepository<TEntity, TKey>
+        where TEntity : class
     {
         protected readonly ApplicationDbContext _context;
-        protected readonly DbSet<T> _dbSet;
+        protected readonly DbSet<TEntity> _dbSet;
 
-        public Repository(ApplicationDbContext context)
+        protected Repository(ApplicationDbContext context)
         {
             _context = context;
-            _dbSet = context.Set<T>();
+            _dbSet   = context.Set<TEntity>();
         }
 
-        public virtual async Task<T?> GetByIdAsync(object id)
-        {
-            return await _dbSet.FindAsync(id);
-        }
+        public async Task<TEntity?> GetByIdAsync(TKey id)
+            => await _dbSet.FindAsync(id);
 
-        public virtual async Task<IEnumerable<T>> GetAllAsync()
-        {
-            return await _dbSet.ToListAsync();
-        }
+        public async Task<IEnumerable<TEntity>> GetAllAsync()
+            => await _dbSet.AsNoTracking().ToListAsync();
 
-        public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
-        {
-            return await _dbSet.Where(predicate).ToListAsync();
-        }
+        public async Task<IEnumerable<TEntity>> FindAsync(
+            Expression<Func<TEntity, bool>> predicate)
+            => await _dbSet.AsNoTracking().Where(predicate).ToListAsync();
 
-        public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
-        {
-            return await _dbSet.FirstOrDefaultAsync(predicate);
-        }
+        public async Task AddAsync(TEntity entity)
+            => await _dbSet.AddAsync(entity);
 
-        public virtual async Task AddAsync(T entity)
-        {
-            await _dbSet.AddAsync(entity);
-        }
+        public void Update(TEntity entity)
+            => _dbSet.Update(entity);
 
-        public virtual async Task AddRangeAsync(IEnumerable<T> entities)
-        {
-            await _dbSet.AddRangeAsync(entities);
-        }
+        public void Remove(TEntity entity)
+            => _dbSet.Remove(entity);
 
-        public virtual void Update(T entity)
-        {
-            _dbSet.Update(entity);
-        }
-
-        public virtual void Remove(T entity)
-        {
-            _dbSet.Remove(entity);
-        }
-
-        public virtual void RemoveRange(IEnumerable<T> entities)
-        {
-            _dbSet.RemoveRange(entities);
-        }
-
-        public virtual async Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null)
-        {
-            return predicate == null 
-                ? await _dbSet.CountAsync() 
+        public async Task<int> CountAsync(
+            Expression<Func<TEntity, bool>>? predicate = null)
+            => predicate is null
+                ? await _dbSet.CountAsync()
                 : await _dbSet.CountAsync(predicate);
-        }
     }
 }

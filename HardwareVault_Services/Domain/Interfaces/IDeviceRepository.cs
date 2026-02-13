@@ -1,18 +1,27 @@
-using HardwareVault_Services.Domain.Entities;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using HardwareVault_Services.Domain.Common;
+using HardwareVault_Services.Infrastructure.Data.Entities;
 
 namespace HardwareVault_Services.Domain.Interfaces
 {
-    public interface IDeviceRepository : IRepository<Device>
+    public interface IDeviceRepository : IRepository<Device, Guid>
     {
-        Task<IEnumerable<Device>> GetDevicesWithDetailsAsync();
-        Task<Device?> GetDeviceWithDetailsAsync(Guid deviceId);
-        Task<IEnumerable<Device>> GetDevicesByCpuManufacturerAsync(string manufacturerName);
-        Task<(IEnumerable<Device> Devices, int TotalCount)> GetPagedDevicesAsync(
-            int page, 
-            int pageSize, 
+        // Full device with all navigations loaded — used for detail/edit panel
+        Task<Device?> GetByIdWithDetailsAsync(Guid deviceId);
+
+        // Paged + filtered list — powers the main device table in React
+        Task<PagedResult<Device>> GetPagedAsync(
+            int     page,
+            int     pageSize,
             string? cpuManufacturer = null,
             string? gpuManufacturer = null,
-            int? minRamInGB = null,
-            string? storageType = null);
+            string? storageType     = null,
+            int?    minRamInGB      = null,
+            string? search          = null);
+
+        // Aggregates for the dashboard stat cards and charts
+        Task<DeviceStatistics> GetStatisticsAsync();
     }
 }
