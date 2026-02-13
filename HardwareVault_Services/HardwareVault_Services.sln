@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280 d18.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HardwareVault_Services", "HardwareVault_Services.csproj", "{0E1D395E-72A8-453D-20DC-B55FC71E1A7C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0E1D395E-72A8-453D-20DC-B55FC71E1A7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E1D395E-72A8-453D-20DC-B55FC71E1A7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E1D395E-72A8-453D-20DC-B55FC71E1A7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E1D395E-72A8-453D-20DC-B55FC71E1A7C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {49ED9988-11D3-4B79-ADAE-2FDA26696D2D}
+	EndGlobalSection
+EndGlobal
