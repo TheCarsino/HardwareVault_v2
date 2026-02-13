@@ -90,13 +90,38 @@ namespace HardwareVault_Services.Infrastructure.Parsers
                 }
 
                 // Parse data rows (starting from row 2)
+                // Track unique device signatures to detect duplicates
+                var deviceSignatures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                
                 int totalRows = worksheet.Dimension.Rows;
                 for (int row = 2; row <= totalRows; row++)
                 {
                     try
                     {
                         var device = ParseRow(worksheet, row, columnMap);
-                        successfulRows.Add(device);
+                        
+                        // Create a unique signature for this device to detect duplicates
+                        var signature = CreateDeviceSignature(device);
+                        
+                        // Check if this exact device was already parsed
+                        if (deviceSignatures.Contains(signature))
+                        {
+                            _logger.LogWarning(
+                                "Row {Row} is a duplicate of a previously parsed row", row);
+                            
+                            failedRows.Add(new ParseError
+                            {
+                                RowNumber = row,
+                                ErrorMessage = "Duplicate device: All values match a previous row in the file",
+                                FieldName = "duplicate",
+                                FieldValue = null
+                            });
+                        }
+                        else
+                        {
+                            deviceSignatures.Add(signature);
+                            successfulRows.Add(device);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -306,6 +331,31 @@ namespace HardwareVault_Services.Infrastructure.Parsers
                 throw new InvalidOperationException($"Column '{columnName}' has invalid decimal value: '{cellValue}'");
 
             return result;
+        }
+
+        // Creates a unique signature string from all device properties
+        // Used to detect exact duplicate rows in the Excel file
+        private string CreateDeviceSignature(DeviceImportDto device)
+        {
+            // Normalize USB ports to consistent order
+            var usbPortsSignature = string.Join("|",
+                device.UsbPorts
+                    .OrderBy(p => p.PortType)
+                    .Select(p => $"{p.PortType}:{p.Count}"));
+
+            // Create composite key from all device properties
+            return string.Join("||",
+                device.CpuManufacturer.ToLower().Trim(),
+                device.CpuModel.ToLower().Trim(),
+                device.GpuManufacturer.ToLower().Trim(),
+                device.GpuModel.ToLower().Trim(),
+                device.RamSizeInMB.ToString(),
+                device.StorageSizeInGB.ToString(),
+                device.StorageType.ToUpper().Trim(),
+                device.PowerSupplyWattage.ToString(),
+                device.WeightInKg.ToString("F2"),  // 2 decimal places for consistency
+                usbPortsSignature
+            );
         }
     }
 }

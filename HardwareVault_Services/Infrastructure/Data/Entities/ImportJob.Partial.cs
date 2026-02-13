@@ -66,8 +66,8 @@ namespace HardwareVault_Services.Infrastructure.Data.Entities
                     $"Cannot complete a job that is in status '{Status}'.");
 
             TotalRows    = totalRows;
-            SuccessCount = successCount;
-            FailureCount = failureCount;
+            SuccessCount = Math.Abs(successCount);
+            FailureCount = Math.Abs(failureCount);
             ErrorLog     = errorLogJson;
             Status       = ImportJobStatus.Completed.ToString();
             CompletedAt  = DateTime.UtcNow;

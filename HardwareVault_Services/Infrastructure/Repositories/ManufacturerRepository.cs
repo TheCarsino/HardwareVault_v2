@@ -3,6 +3,7 @@
 // Handles manufacturer lookup and creation with AMD special case
 // ════════════════════════════════════════════════════════════
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -35,6 +36,7 @@ namespace HardwareVault_Services.Infrastructure.Repositories
         {
             var normalized = name.Trim();
 
+            // First, check if it already exists in the database
             var existing = await _dbSet.FirstOrDefaultAsync(m =>
                 m.Name.ToLower() == normalized.ToLower());
 
@@ -50,6 +52,23 @@ namespace HardwareVault_Services.Infrastructure.Repositories
                 return existing;
             }
 
+            // Also check if it's already been added to the change tracker in this batch
+            var tracked = _context.ChangeTracker.Entries<Manufacturer>()
+                .FirstOrDefault(e => e.Entity.Name.ToLower() == normalized.ToLower());
+
+            if (tracked is not null)
+            {
+                bool needsUpgrade =
+                    (tracked.Entity.ProductType == "CPU" && type == "GPU") ||
+                    (tracked.Entity.ProductType == "GPU" && type == "CPU");
+
+                if (needsUpgrade)
+                    tracked.Entity.ProductType = "Both";
+
+                return tracked.Entity;
+            }
+
+            // Not found anywhere - create new
             var manufacturer = new Manufacturer 
             { 
                 Name = normalized, 
